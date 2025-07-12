@@ -463,22 +463,46 @@
         }
     }
 
+    // SIMULAÇÃO DA API PARA EVITAR ERRO DE CORS
+    function getSimulatedFacilZapData() {
+        // Simulação com 14 produtos ativos
+        const simulatedData = { "data": [] };
+        const productNames = ["Sandália Anabela Soft", "Scarpin Rosé Classic", "Mule Nude Confort", "Tênis Casual White", "Rasteirinha Shine", "Bota Black Rock", "Peep Toe Caramelo", "Sapatilha Laço", "Mocassim Tratorado", "Bota Over the Knee", "Sandália Bloco Metalizada", "Tênis Plataforma", "Chinelo Slide", "Scarpin Verniz"];
+        for (let i = 0; i < 14; i++) {
+            simulatedData.data.push({
+                "id": 200 + i,
+                "nome": productNames[i],
+                "preco": (Math.random() * (250 - 50) + 50).toFixed(2),
+                "imagem": `https://via.placeholder.com/300/DB1472/FFFFFF?text=Produto+${i+1}`,
+                "is_active": true,
+                "total_estoque": Math.floor(Math.random() * 50) + 1,
+                "estoque": []
+            });
+        }
+        return simulatedData;
+    }
+
     async function syncFromFacilZap() {
         showToast('Sincronizando produtos...');
         try {
-            // Chamando nosso próprio proxy na Netlify.
+            // **MODO DE SIMULAÇÃO ATIVADO**
+            // Para testar a chamada real, comente a linha da simulação e descomente o bloco do fetch.
+            const data = getSimulatedFacilZapData();
+            
+            /*
+            // --- CHAMADA REAL PARA A API (DESCOMENTE QUANDO O PROXY ESTIVER FUNCIONANDO) ---
             const response = await fetch('/api/facilzap-proxy');
-
-            // CORREÇÃO: Verifica o tipo de conteúdo antes de tentar converter para JSON.
             const contentType = response.headers.get("content-type");
             if (!response.ok || !contentType || !contentType.includes("application/json")) {
-                 // Tenta ler a resposta como texto para dar mais detalhes do erro
                 const errorText = await response.text();
                 console.error("Resposta inesperada do servidor:", errorText);
                 throw new Error('A resposta do servidor não foi válida. Verifique os logs da função na Netlify.');
             }
-
             const data = await response.json();
+            // --- FIM DO BLOCO DA API ---
+            */
+
+            console.log("Dados recebidos:", data); // Para depuração
             
             const productsFromApi = data.data || [];
 
