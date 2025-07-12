@@ -1,5 +1,4 @@
 exports.handler = async function(event, context) {
-    // Recebe o token via query string
     const token = event.queryStringParameters.token;
     
     if (!token) {
@@ -19,6 +18,6 @@ exports.handler = async function(event, context) {
             }
         });
 
-        // ... resto do código permanece igual ...
+        // ... resto do código ...
     }
 };
