@@ -444,91 +444,83 @@
         }
     }
 
-    // --- LÓGICA DE INTEGRAÇÃO FACILZAP ---
-    function openFacilZapModal() {
-        const token = localStorage.getItem('facilzap_token');
-        document.getElementById('facilzapToken').value = token || '18984QJfUFFSglyjNBY9iciIZLRh1TPnoMJ2s92VLE3SxRQ1Hf3PHXeeD5hXPa5P1lTcCAy0IY5OXzcCzg5wT';
-        document.getElementById('facilzapModal').classList.add('active');
-    }
+   // -- LÓGICA DE INTEGRAÇÃO FACILZAP --
+function openFacilZapModal() {
+    const token = localStorage.getItem('facilzap_token');
+    document.getElementById('facilzapToken').value = token || '';
+    document.getElementById('facilzapModal').classList.add('active');
+}
 
-    function saveFacilZapToken() {
-        const token = document.getElementById('facilzapToken').value.trim();
-        if (token) {
-            localStorage.setItem('facilzap_token', token);
-            showToast('Token salvo com sucesso!', 'success');
-            closeModal('facilzapModal');
-            syncFromFacilZap(); // Sincroniza imediatamente após salvar
-        } else {
-            showToast('Por favor, insira um token válido.', 'error');
-        }
-    }
-
-    async function syncFromFacilZap() {
-        showToast('Sincronizando produtos...');
-        try {
-            // Chamando nosso próprio proxy na Netlify.
-            const response = await fetch('/api/facilzap-proxy');
-
-            // CORREÇÃO: Verifica o tipo de conteúdo antes de tentar converter para JSON.
-            const contentType = response.headers.get("content-type");
-            if (!response.ok || !contentType || !contentType.includes("application/json")) {
-                 // Tenta ler a resposta como texto para dar mais detalhes do erro
-                const errorText = await response.text();
-                console.error("Resposta inesperada do servidor:", errorText);
-                throw new Error('A resposta do servidor não foi válida. Verifique os logs da função na Netlify.');
-            }
-
-            const data = await response.json();
-            
-            const productsFromApi = data.data || [];
-
-            // Mapeia os dados da API para a nossa estrutura de produto
-            allApiProducts = productsFromApi.map(p => ({
-                id: p.id,
-                nome: p.nome,
-                preco_original: p.preco,
-                imagem: p.imagem,
-                variacoes: p.estoque,
-                disponivel: p.total_estoque > 0
-            }));
-
-            // Salva os produtos sincronizados no localStorage para persistência
-            localStorage.setItem('allApiProducts', JSON.stringify(allApiProducts));
-
-            renderAdminProducts();
-            updateLastSyncTime();
-
-            if (allApiProducts.length > 0) {
-                showToast(`${allApiProducts.length} produtos sincronizados com sucesso!`, 'success');
-            } else {
-                showToast('Sincronização concluída. Nenhum produto foi encontrado na API.', 'info');
-            }
-
-        } catch (error) {
-            console.error('Erro ao sincronizar com FacilZap:', error);
-            showToast(`Falha ao sincronizar: ${error.message}`, 'error');
-        }
+function saveFacilZapToken() {
+    const token = document.getElementById('facilzapToken').value.trim();
+    
+    // Validação básica do token
+    if (!token || token.length < 30) {
+        showToast('Token inválido! Deve ter pelo menos 30 caracteres', 'error');
+        return;
     }
     
-    function loadAdminData() {
-        const token = localStorage.getItem('facilzap_token');
-        if (token) {
-            // Renderiza os produtos já salvos e depois tenta sincronizar
-            renderAdminProducts();
-            syncFromFacilZap();
-        } else {
-            // Se não há token, exibe uma mensagem ou o modal de configuração
-            const grid = document.getElementById('admin-product-grid');
-            grid.innerHTML = `<p style="text-align:center; grid-column: 1 / -1;">Por favor, configure sua integração com a FacilZap para ver os produtos.</p>`;
-        }
+    localStorage.setItem('facilzap_token', token);
+    showToast('Token salvo com sucesso!', 'success');
+    closeModal('facilzapModal');
+    syncFromFacilZap();
+}
+
+async function syncFromFacilZap() {
+    const token = localStorage.getItem('facilzap_token');
+
+    if (!token) {
+        showToast('Configure o token primeiro!', 'error');
+        openFacilZapModal();
+        return;
     }
 
-    function updateLastSyncTime() {
-        const timeEl = document.getElementById('last-sync-time');
-        const now = new Date();
-        const formattedTime = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
-        timeEl.textContent = `Última sincronização: ${formattedTime}`;
-        localStorage.setItem('lastSyncTime', formattedTime);
+    showToast('Sincronizando produtos...');
+    
+    try {
+        // Chamada corrigida com o token como parâmetro
+        const response = await fetch(`/api/facilzap-proxy?token=${encodeURIComponent(token)}`);
+        
+        // Verificação de erro na resposta
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Erro ${response.status}: ${error}`);
+        }
+        
+        // Verifica se é JSON válido
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error('Resposta inválida da API');
+        }
+
+        const data = await response.json();
+        
+        // Processamento dos produtos (mantido do código original)
+        const productsFromApi = data.data || [];
+        allApiProducts = productsFromApi.map(p => ({
+            id: p.id,
+            nome: p.nome,
+            preco_original: p.preco,
+            imagem: p.imagem,
+            variacoes: p.estoque,
+            disponivel: p.total_estoque > 0
+        }));
+
+        localStorage.setItem('allApiProducts', JSON.stringify(allApiProducts));
+        renderAdminProducts();
+        updateLastSyncTime();
+
+        showToast(`${allApiProducts.length} produtos sincronizados!`, 'success');
+        
+    } catch (error) {
+        console.error('Erro na sincronização:', error);
+        showToast(`Falha: ${error.message}`, 'error');
+        
+        // Remove token inválido
+        if (error.message.includes('401') || error.message.includes('403')) {
+            localStorage.removeItem('facilzap_token');
+        }
+    }
     }
 
     // --- RENDERIZAÇÃO E LÓGICA DE PREÇO ---
