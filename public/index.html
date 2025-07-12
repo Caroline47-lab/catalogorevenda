@@ -472,11 +472,13 @@
             // CORREÇÃO: Verifica o tipo de conteúdo antes de tentar converter para JSON.
             const contentType = response.headers.get("content-type");
             if (!response.ok || !contentType || !contentType.includes("application/json")) {
-                throw new Error('A resposta do servidor não foi válida. Verifique a configuração da função na Netlify.');
+                 // Tenta ler a resposta como texto para dar mais detalhes do erro
+                const errorText = await response.text();
+                console.error("Resposta inesperada do servidor:", errorText);
+                throw new Error('A resposta do servidor não foi válida. Verifique os logs da função na Netlify.');
             }
 
             const data = await response.json();
-            console.log("Dados recebidos:", data); // Para depuração
             
             const productsFromApi = data.data || [];
 
